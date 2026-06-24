@@ -1,0 +1,40 @@
+TV-MORL MovieLens-1M Validation
+========================================================
+Dataset facts:
+  Raw MovieLens-1M users: 6040
+  Raw MovieLens-1M movies file count: 3883
+  Raw MovieLens-1M movies appearing in ratings: 3706
+  Raw MovieLens-1M ratings: 1,000,209
+
+Why the experiment size is smaller than the raw dataset:
+  The environment filters to users with at least min_user_ratings interactions and, if requested, can also restrict candidate items.
+  In this run, n_items=all rated movies and min_user_ratings=20, so the environment keeps users with enough history to estimate stable long-term and short-term preference vectors.
+  Final experiment subset users: 6040
+  Final experiment candidate items: 3883
+
+TV-MOMDP design:
+  State s_t = [current preference P_t, session preference, history satisfaction/diversity/novelty, user metadata, cyclical time features].
+  Action a_t = recommend one movie from the candidate item set.
+  Objectives r_t = [satisfaction, diversity, novelty].
+  Pt changes over time by blending long-term profile and short-term session profile plus seasonal drift.
+  Rt changes over time by increasing the reward weight on short-term intent matching during an episode.
+
+Two-stage Pareto design:
+  Stage 1 (Initialization): weighted-sum PPO trains multiple policies for different objective preference weights.
+  Stage 2 (Extension): IPO-style constrained updates maximize one objective while constraining the others, starting from selected diverse Pareto policies.
+
+Main result (Pt+Rt):
+  Random baseline: [ 6.3084164 27.02593   15.207802 ]
+  Static greedy baseline: [16.022675   0.6        5.5872664]
+  TV-MORL best: [12.179054 16.453169 11.01073 ]
+  TV-MORL mean: [ 8.050205 11.220326  9.50774 ]
+  Init HV: 1332.516243 -> Final HV: 1577.763259
+  Init EU: 11.005458 -> Final EU: 11.571343
+  Init SP: 16.860325 -> Final SP: 6.679335
+  Elapsed: 6.02s
+
+Ablation results (final metrics):
+  Static MORL: HV=1280.778229, EU=12.059099, SP=7.190840
+  Ablation (Pt only): HV=1372.241683, EU=11.923265, SP=7.788763
+  Ablation (Rt only): HV=1328.097369, EU=11.992528, SP=7.275337
+  TV-MORL (Pt+Rt): HV=1577.763259, EU=11.571343, SP=6.679335
