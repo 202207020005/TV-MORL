@@ -1,8 +1,0 @@
-Original-style C-MORL on MovieLens static environment
-========================================================
-Users: 6040
-Candidate items: 3883
-Init HV: 2417.035757 -> Final HV: 2513.631492
-Init EU: 16.132016 -> Final EU: 16.567879
-Init SP: 11.913498 -> Final SP: 8.566774
-Pareto points: 20
