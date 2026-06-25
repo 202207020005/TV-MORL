@@ -1,0 +1,10 @@
+TV-MORL MovieLens-1M Validation
+========================================================
+Rt strengths: rel=0.1, div=0.1, nov=0.1
+Rel formula: gate=[0.15, 0.65], static_gate=0.35, pop=0.1, explicit=0.7
+TV-MORL best: [10.198731 22.0361   23.084482]
+TV-MORL mean: [ 7.3524346 11.201666  15.472137 ]
+Init HV: 2720.079453 -> Final HV: 3419.954172
+Init EU: 14.930252 -> Final EU: 16.510886
+Init SP: 5.971627 -> Final SP: 3.952211
+Elapsed: 19.85s

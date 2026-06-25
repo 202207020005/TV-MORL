@@ -203,6 +203,15 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Local experiment clutter
+results/tmp/
+results/smoke*/
+results/*smoke*/
+results/*trace*/
+results/*candidate_scan*/
+results/*fine_search*/
+*.tmp
+
 # Ruff stuff:
 .ruff_cache/
 

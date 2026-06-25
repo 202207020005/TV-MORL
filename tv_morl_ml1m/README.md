@@ -1,157 +1,113 @@
-# TV-MORL on MovieLens-1M
+# TV-MORL Code
 
-This folder implements a time-varying multi-objective reinforcement learning method, `TV-MORL`, built on top of the two-stage Pareto discovery idea of `C-MORL`.
+This folder contains the complete implementation used for the final `TV-MORL` experiments on `MovieLens-1M`.
 
-Concretely, we retain the original `C-MORL` pipeline:
+## Files
 
-- initialization with multiple weighted-sum preference vectors
-- external Pareto archive maintenance
-- constrained extension that improves one objective while preserving the others
-- preference-aware policy allocation at evaluation time
+- [movielens_env.py](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/tv_morl_ml1m/movielens_env.py)
+  dataset loader and time-varying recommendation environment
+- [tv_model.py](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/tv_morl_ml1m/tv_model.py)
+  multi-objective actor-critic model, rollout buffer, PPO update, and IPO-style extension update
+- [tv_morl.py](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/tv_morl_ml1m/tv_morl.py)
+  two-stage Pareto discovery trainer
+- [run_tv.py](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/tv_morl_ml1m/run_tv.py)
+  main entry for training, same-environment comparison, and lambda ablation
 
-The main change is that the static multi-objective return is replaced by a time-varying objective process driven by:
+## Install
 
-- `P_t`: time-varying user preference
-- `R_t`: time-varying reward shaping over relevance, diversity, and novelty
-
-## Dataset
-
-We validate `TV-MORL` on the real `MovieLens-1M` dataset located at:
-
-```text
-C:\Users\86198\ml-1m
-```
-
-The dataset used in the formal experiments contains:
-
-- `6040` users
-- `1,000,209` ratings
-- `3883` movies in `movies.dat`
-- `3706` movies that actually appear in `ratings.dat`
-
-The formal run uses:
-
-- all `3883` movie entries from `movies.dat` as candidate items
-- `min_user_ratings = 20`
-- final usable users: `6040`
-
-## Method
-
-`TV-MORL` extends `C-MORL` with a time-varying recommendation environment.
-
-### Time-varying preference
-
-The environment maintains:
-
-- a long-term user profile from historical ratings
-- a short-term session profile from recent interaction context
-- a bounded time gate controlling the drift from short-term interest back toward long-term preference
-- a mild seasonal perturbation term
-
-### Time-varying reward
-
-The reward vector contains three objectives:
-
-- `Relevance`
-- `Diversity`
-- `Novelty`
-
-The relevance term uses the revised bounded formulation:
-
-- long-term match
-- short-term match
-- an optional popularity auxiliary term
-- an explicit-rating fusion weight
-
-All key weights are bounded and configurable, so the reward definition can be ablated directly.
-
-## Code Structure
-
-- [movielens_env.py](C:\Users\86198\Documents\Codex\2026-06-23\new-chat\tv_morl_ml1m\movielens_env.py)
-  MovieLens-1M time-varying environment and dataset loader
-- [tv_model.py](C:\Users\86198\Documents\Codex\2026-06-23\new-chat\tv_morl_ml1m\tv_model.py)
-  multi-objective actor-critic PPO and IPO-style constrained update
-- [tv_morl.py](C:\Users\86198\Documents\Codex\2026-06-23\new-chat\tv_morl_ml1m\tv_morl.py)
-  two-stage trainer and Pareto archive
-- [run_tv.py](C:\Users\86198\Documents\Codex\2026-06-23\new-chat\tv_morl_ml1m\run_tv.py)
-  training entry, evaluation, ablation, and plotting
-
-## Basic Usage
-
-To run the formal `TV-MORL` experiment:
+From the repository root:
 
 ```powershell
-python C:\Users\86198\Documents\Codex\2026-06-23\new-chat\tv_morl_ml1m\run_tv.py `
+pip install -r requirements.txt
+```
+
+## Reproduce the Main Same-Environment 5-Seed Experiment
+
+Reference `full_tv` uses the controlled comparison configuration:
+
+- `lambda_rel = 0.10`
+- `lambda_div = 0.10`
+- `lambda_nov = 0.10`
+
+Single run example:
+
+```powershell
+python tv_morl_ml1m/run_tv.py `
   --data-dir C:\Users\86198\ml-1m `
+  --save-dir results\example_full_tv_ref_seed42 `
   --num-steps 4000 `
   --init-steps 2000 `
   --min-user-ratings 20 `
-  --rt-rel-strength 0.1 `
-  --rt-div-strength 0.1 `
-  --rt-nov-strength 0.1 `
+  --seed 42 `
+  --rt-rel-strength 0.10 `
+  --rt-div-strength 0.10 `
+  --rt-nov-strength 0.10 `
   --time-gate-min 0.15 `
   --time-gate-max 0.65 `
-  --rel-static-gate 0.45 `
-  --rel-pop-weight 0.10 `
-  --rel-explicit-weight 0.70 `
-  --save-dir C:\Users\86198\Documents\Codex\2026-06-23\new-chat\results\tv_morl_formal_rel_recheck\gate_0p45
-```
-
-To run the relevance-formula ablation:
-
-```powershell
-python C:\Users\86198\Documents\Codex\2026-06-23\new-chat\tv_morl_ml1m\run_tv.py `
-  --data-dir C:\Users\86198\ml-1m `
-  --num-steps 4000 `
-  --init-steps 2000 `
-  --min-user-ratings 20 `
-  --rt-rel-strength 0.1 `
-  --rt-div-strength 0.1 `
-  --rt-nov-strength 0.1 `
-  --time-gate-min 0.15 `
-  --time-gate-max 0.65 `
+  --seasonal-amp 0.0 `
   --rel-static-gate 0.35 `
   --rel-pop-weight 0.10 `
   --rel-explicit-weight 0.70 `
-  --save-dir C:\Users\86198\Documents\Codex\2026-06-23\new-chat\results\tv_morl_formal_rel_formula_scan `
-  --run-rel-formula-ablation
+  --run-same-env-baseline
 ```
 
-## Main Results
+The retained aggregated final result is in:
 
-The current formal `TV-MORL` result is stored at:
+- [mean_std_summary_all_methods.txt](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/results/tv_morl_pt_rt_same_env_multiseed/mean_std_summary_all_methods.txt)
 
-- [summary.txt](C:\Users\86198\Documents\Codex\2026-06-23\new-chat\results\tv_morl_formal_rel_recheck\gate_0p45\summary.txt)
+To reproduce the retained 5-seed structure, repeat the same command with:
 
-Key metrics:
+- `--seed 41 --save-dir results\tv_morl_pt_rt_same_env_multiseed\seed_41`
+- `--seed 42 --save-dir results\tv_morl_pt_rt_same_env_multiseed\seed_42`
+- `--seed 43 --save-dir results\tv_morl_pt_rt_same_env_multiseed\seed_43`
+- `--seed 44 --save-dir results\tv_morl_pt_rt_same_env_multiseed\seed_44`
+- `--seed 45 --save-dir results\tv_morl_pt_rt_same_env_multiseed\seed_45`
 
-- `Final HV = 3391.594862`
-- `Final EU = 16.884902`
-- `Final SP = 7.619808`
+## Reproduce the Final Lambda Analysis
 
-For comparison, the real original-style `C-MORL` baseline is stored at:
+Single-seed coarse scan:
 
-- [summary.txt](C:\Users\86198\Documents\Codex\2026-06-23\new-chat\results\cmorl_movielens_real\summary.txt)
+```powershell
+python tv_morl_ml1m/run_tv.py `
+  --data-dir C:\Users\86198\ml-1m `
+  --save-dir results\example_lambda_scan `
+  --num-steps 4000 `
+  --init-steps 2000 `
+  --min-user-ratings 20 `
+  --seed 42 `
+  --rt-rel-strength 0.10 `
+  --rt-div-strength 0.10 `
+  --rt-nov-strength 0.10 `
+  --time-gate-min 0.15 `
+  --time-gate-max 0.65 `
+  --seasonal-amp 0.0 `
+  --rel-static-gate 0.35 `
+  --rel-pop-weight 0.10 `
+  --rel-explicit-weight 0.70 `
+  --run-lambda-decoupled-ablation
+```
 
-Key baseline metrics:
+Retained final ablation outputs:
 
-- `Final HV = 2513.631492`
-- `Final EU = 16.567879`
-- `Final SP = 8.566774`
+- [summary.txt](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/results/tv_morl_pt_rt_lambda_ablation/summary.txt)
+- [lambda_decoupled_ablation.png](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/results/tv_morl_pt_rt_lambda_ablation/lambda_decoupled_ablation.png)
+- [mean_std_summary_key_points_all.txt](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/results/tv_morl_pt_rt_lambda_key_multiseed_consistent/mean_std_summary_key_points_all.txt)
 
-Under the current formal run, `TV-MORL` improves over the real `C-MORL` baseline on both `HV` and `EU`, while `SP` decreases relative to the baseline.
+The retained Pareto-front figure used in the report is:
 
-The relevance-formula ablation is stored at:
+- [pareto_front.png](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/results/tv_morl_pt_rt_pareto_final_anchor/pareto_front.png)
+  anchor configuration: `lambda_rel = 0.10`, `lambda_div = 0.10`, `lambda_nov = 0.00`
 
-- [summary.txt](C:\Users\86198\Documents\Codex\2026-06-23\new-chat\results\tv_morl_formal_rel_formula_scan\summary.txt)
-- [rel_formula_ablation.png](C:\Users\86198\Documents\Codex\2026-06-23\new-chat\results\tv_morl_formal_rel_formula_scan\rel_formula_ablation.png)
+## Tuned Full-TV Result
 
-Its current formal-budget result shows:
+The tuned 5-seed configuration retained in this repository is:
 
-- `c_rel = 0.45` gives the best `HV` and `EU` among the scanned settings
-- reducing `c_pop` to `0.00` improves `HV`, but does not beat `c_rel = 0.45` on `EU`
-- `eta_rel = 0.50` to `0.70` is more stable than `eta_rel = 0.85`
+- `lambda_rel = 0.20`
+- `lambda_div = 0.00`
+- `lambda_nov = 0.00`
 
-## Reference
+Retained result directory:
 
-The implementation in this folder follows the two-stage Pareto discovery framework of `C-MORL`, and adapts it to a time-varying recommendation setting on `MovieLens-1M`.
+- [tv_morl_full_tv_tuned_5seed](C:/Users/86198/Documents/Codex/2026-06-23/new-chat/results/tv_morl_full_tv_tuned_5seed)
+
+This tuned configuration improves over the reference `full_tv` mean on HV, EU, and SP in the current experiments.

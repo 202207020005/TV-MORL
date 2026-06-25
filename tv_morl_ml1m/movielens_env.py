@@ -199,6 +199,8 @@ class MovieLensRealTVEnv(gym.Env):
 
         self.n_items = len(bundle.movie_ids)
         self.n_genres = len(bundle.genre_names)
+        self._max_episode_steps = max_steps
+        self._elapsed_steps = 0
 
         obs_dim = self.n_genres * 2 + 3 + 3 + 2
         self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(obs_dim,), dtype=np.float32)
@@ -207,6 +209,9 @@ class MovieLensRealTVEnv(gym.Env):
         self.obj_dim = 3
 
         self.reset()
+
+    def set_params(self, env_params):
+        del env_params
 
     def _time_features(self):
         time_ratio = self.global_time / max(1.0, float(self.bundle.timestamp_max - self.bundle.timestamp_min))
@@ -265,6 +270,7 @@ class MovieLensRealTVEnv(gym.Env):
         self.user_rating_map = self.bundle.user_ratings[self.user_id]
 
         self.current_step = 0
+        self._elapsed_steps = 0
         self.recent_items = []
         self.recent_satisfaction = []
         self.history_satisfaction = 0.5
@@ -329,19 +335,25 @@ class MovieLensRealTVEnv(gym.Env):
 
     def step(self, action):
         item_idx = int(action)
-        self.current_step += 1
-        self.global_time += 6.0 * 3600.0
-
-        self._update_preference()
+        # Compute reward from the current state first. The next-state preference
+        # will be updated only after the short-term session state is refreshed.
+        preference_focus = self._time_gate()
+        relevance_gate = (
+            _bounded_interp(self.rel_static_gate, preference_focus, self.rt_rel_strength)
+            if self.enable_rt
+            else self.rel_static_gate
+        )
         satisfaction = self._compute_relevance(item_idx)
         diversity = self._compute_diversity(item_idx)
         novelty = self._compute_novelty(item_idx)
 
         item_profile = self.bundle.item_genres[item_idx]
-        session_mix = self.session_update_rate if self.enable_pt else 0.0
-        self.session_preference = _normalize(
-            self.session_keep_rate * self.session_preference + session_mix * satisfaction * item_profile + 1e-4
-        )
+        if self.enable_pt:
+            self.session_preference = _normalize(
+                self.session_keep_rate * self.session_preference
+                + self.session_update_rate * satisfaction * item_profile
+                + 1e-4
+            )
         self.recent_items.append(item_idx)
         self.recent_satisfaction.append(satisfaction)
         self.recent_items = self.recent_items[-6:]
@@ -353,6 +365,11 @@ class MovieLensRealTVEnv(gym.Env):
         self.history_diversity = float(np.clip(1.0 - pairwise.mean(), 0.0, 1.0))
         self.history_novelty = float(np.mean([self.bundle.novelty[i] for i in self.recent_items]))
 
+        self.current_step += 1
+        self._elapsed_steps += 1
+        self.global_time += 6.0 * 3600.0
+        self._update_preference()
+
         terminated = False
         truncated = self.current_step >= self.max_steps
         obj = np.array([satisfaction, diversity, novelty], dtype=np.float32)
@@ -361,11 +378,7 @@ class MovieLensRealTVEnv(gym.Env):
             "obj_raw": obj.copy(),
             "user_id": self.user_id,
             "movie_id": int(self.bundle.movie_ids[item_idx]),
-            "preference_focus": self._time_gate(),
-            "relevance_gate": (
-                _bounded_interp(self.rel_static_gate, self._time_gate(), self.rt_rel_strength)
-                if self.enable_rt
-                else self.rel_static_gate
-            ),
+            "preference_focus": preference_focus,
+            "relevance_gate": relevance_gate,
         }
         return self._get_obs(), 0.0, terminated, truncated, info
